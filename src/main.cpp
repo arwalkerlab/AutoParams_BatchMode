@@ -76,6 +76,16 @@ int main(int argc, char **argv)
     buffer << "Found " << mol.dihedrals.size() << " dihedrals in molecule." << std::endl;
     settings.Output(buffer.str());
    
+    // identify all rings
+    mol.FindRings();
+    buffer.str("");
+    int total_rings = mol.four_rings.size() + mol.five_rings.size() + mol.six_rings.size();
+    buffer << "Found " << total_rings << " rings in molecule.  Ring sizes are: " << std::endl;
+    buffer << "Four-membered rings: " << mol.four_rings.size() << std::endl;
+    buffer << "Five-membered rings: " << mol.five_rings.size() << std::endl;
+    buffer << "Six-membered rings:  " << mol.six_rings.size() << std::endl;
+    settings.Output(buffer.str());
+
     // OPTIONAL optimize structure
     if (settings.OPTIMIZE_FIRST) //TODO:  Add TeraChem optimization function.  Quick and dirty, nothing fancy, just get it done.
     {

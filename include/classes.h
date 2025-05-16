@@ -47,6 +47,9 @@ public:
     std::vector <std::vector<int>> angles;
     std::vector <std::vector<int>> dihedrals;
     std::vector <std::vector<int>> torsions;
+    std::vector <std::vector<int>> four_rings;
+    std::vector <std::vector<int>> five_rings;
+    std::vector <std::vector<int>> six_rings;
     
     // Missing Parameters
     std::vector<std::string> missing_masses;
@@ -65,6 +68,7 @@ public:
     void FindAngles();
     void FindDihedrals();
     void FindTorsions();
+    void FindRings();
 };
 
 

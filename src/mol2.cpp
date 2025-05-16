@@ -73,7 +73,7 @@ std::string process_C(Atom atom,Molecule mol)
     }
 
     // // Identify ring structures
-
+    
     // If 2 or more rings, it's easy.
 
     // If 5-membered ring with 2 nitrogen bonds, it's 

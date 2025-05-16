@@ -1,2 +1,4 @@
 bin/*
 obj/*
+bin/autoparams
+include/known_parameters.dat

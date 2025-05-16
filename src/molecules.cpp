@@ -267,3 +267,77 @@ void Molecule::FindDihedrals()
         }
     }
 }
+
+
+void Molecule::FindRings()
+{
+    //iterate through all torsions (A-B-C-D) in the molecule
+    for (int i=0; i < torsions.size(); i++)
+    {   
+        //assign atom numbers in torsion
+        int at_A = torsions[i][0];
+        int at_B = torsions[i][1];
+        int at_C = torsions[i][2];
+        int at_D = torsions[i][3];
+        
+        for (std::vector <int> bond : bonds) // iterate through bonds to identify all 4-member rings.
+        {
+            int at_E = bond[0];
+            int at_F = bond[1];
+            if (((at_A == at_E) && (at_D == at_F)) || ((at_A == at_F) && (at_D == at_E)) )
+            {
+                // If torsion is 4-membered ring, skip subsequent comparisons for this bond.
+                four_rings.push_back({at_A,at_B,at_C,at_D});
+                break;
+            }
+        }
+
+        for (std::vector <int> angle : angles) // iterate through angles against torsions to identify all 5 member rings.
+        {
+            int at_E = angle[0];
+            int at_F = angle[1];
+            int at_G = angle[2];
+            if (((at_A == at_E) && (at_D == at_G)) || ((at_A == at_G) && (at_D == at_E)))
+            {
+                if ((at_F != at_B) && (at_F != at_C))
+                {
+                        five_rings.push_back({at_A,at_B,at_C,at_D,at_F});
+                }
+            }
+        }
+
+        for (int j=i+1; j < torsions.size(); j++) // iterate through torsions to identify all 6-member rings.
+        {
+            /*
+               B--C
+              /    \           B--C
+             A      D         /    \
+                vs.    -->   A      D --> A,B,C,D,G,F
+             E      H         \    /
+              \    /           F--G
+               F--G
+            */
+            int at_E = torsions[j][0];
+            int at_F = torsions[j][1];
+            int at_G = torsions[j][2];
+            int at_H = torsions[j][3];
+            if ((at_A == at_E) && (at_D == at_H))
+            {
+                if ((at_F != at_B) && (at_F != at_C) && (at_G != at_B) && (at_G != at_C))
+                {
+                    six_rings.push_back({at_A,at_B,at_C,at_D,at_G,at_F});
+
+                }
+            }
+            else if ((at_A == at_H) && (at_D == at_E))
+            {
+                if ((at_F != at_B) && (at_F != at_C) && (at_G != at_B) && (at_G != at_C))
+                {
+                    six_rings.push_back({at_A,at_B,at_C,at_D,at_F,at_G});
+                }
+            }
+        }
+    }
+
+    // gotta check if any rings are duplicates...
+}
