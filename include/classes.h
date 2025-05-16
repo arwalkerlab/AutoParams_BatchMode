@@ -21,7 +21,9 @@ class Atom
         int electron_counter;
         double vdw_radius;
         std::string atom_type;
-
+        std::vector <int> bonded_to_indexes;
+        std::vector <std::string> bonded_to_elements;
+        
         Atom(std::string line);
         ~Atom();
         void set_resname(std::string resname);

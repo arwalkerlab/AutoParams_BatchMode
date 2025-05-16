@@ -1,237 +1,256 @@
 #include "mol2.h"
-
-
-Mol2File::Mol2File(Molecule mol)    //Constructor
-{  
-    for (Atom atom : mol.atoms)
-    {
-        std::cout << std::endl;
-    }
-
-}
-
-Mol2File::~Mol2File()   //Destructor
-{
-
-}
-
 // Atom Typing:
 // Identify element (H, N, C, O, S, Cl, Br, F, I, P, etc.)
 // Identify # of bonds vs. max total bonds (count number of bonds that include the atom index, then identify if those are single, double, triple, etc.)
 // Identify characteristics (in ring, bridging, etc.)
 // Select atom type from base forcefield requested. (if statements, etc.)
 
-std::vector<std::string> get_bonded_elements(Atom atom, Molecule mol)
-{
-    std::vector <std::string> bonded_atoms = {};
-    for (std::vector<int> bond : mol.bonds)
-    {
-        if (bond[0] == atom.atom_number - 1)
-        {
-            bonded_atoms.push_back(mol.atoms[bond[1]].element);
-        }
-        else if (bond[1] == atom.atom_number - 1)
-        {
-            bonded_atoms.push_back(mol.atoms[bond[0]].element);
-        }
-        else
-        {
-            continue;
-        }
-    }
-    return bonded_atoms;
-}
 
-std::string process_S(Atom atom,Molecule mol)
+std::string process_S(Atom atom, Molecule mol)
 {
-    std::vector <std::string> bonded_atoms = get_bonded_elements(atom, mol);
-    if (std::find(bonded_atoms.begin(), bonded_atoms.end(), "H") != bonded_atoms.end())
+    if (count_element_in_array(atom.bonded_to_elements,"H") > 0)
     {
-        // If there's a hydrogen bonded to the sulfur, it's an "SH" atom type.
-        return "SH";
+        return "SH"; // If there's a hydrogen bonded to the sulfur, it's an "SH" atom type.
+    }
+    if (count_element_in_array(atom.bonded_to_elements,"S") > 0)
+    {
+        return "SS"; // If part of a disulfide bond, it's "SS" atom type.
     }
     // Otherwise, it's an "S " atom type.
     return "S ";
 }
 
-std::string process_C(Atom atom,Molecule mol)
+std::string process_C(Atom atom, Molecule mol)
 {
-    std::vector <std::string> bonded_atoms = get_bonded_elements(atom, mol);
-    if (bonded_atoms.size() == 4)
+    if (atom.bonded_to_elements.size() == 4)
     {
         // If it's an SP3 carbon, it's "CT"
         return "CT";
     }
-    if (bonded_atoms.size() == 1)
+    if (atom.bonded_to_elements.size() == 1)
     {
     // If it's an SP carbon, it's "CY" (bonded to nitrogen) or "CZ" (not bonded to nitrogen).
-        if (std::find(bonded_atoms.begin(), bonded_atoms.end(),"N") != bonded_atoms.end())
+        if (std::find(atom.bonded_to_elements.begin(), atom.bonded_to_elements.end(),"N") != atom.bonded_to_elements.end())
         {
             return "CY";
         }
         return "CZ";
     }
 
-    // // Identify ring structures
-    
+    // Identify ring structures
+    int n_rings = 0;
+    bool five_member = false;
+    bool six_member = false;
+
+    for (std::vector<int> ring : mol.five_rings)
+    {
+        if (std::find(ring.begin(), ring.end(), atom.atom_number-1) != ring.end())
+        {
+            n_rings++;
+            five_member = true;
+        }
+    }
+    for (std::vector<int> ring : mol.six_rings)
+    {
+        if (std::find(ring.begin(), ring.end(), atom.atom_number-1) != ring.end())
+        {
+            n_rings++;
+            six_member = true;
+        }
+    }
+
     // If 2 or more rings, it's easy.
+    if (n_rings > 1)
+    {
+        return "CB";
+    }
 
     // If 5-membered ring with 2 nitrogen bonds, it's 
-/*
-
-def process_C(atom,ring_groups,bridging_atoms):
-    n_bonds = len(atom.bonds)
-    #### SP3 CARBONS
-    if n_bonds == 4:
-        bond_atoms = get_bonded_elements(atom)
-        if all(["H" in bond_atoms,"N" in bond_atoms,"C" in bond_atoms]):
-            # CX 12.01         0.360               protein C-alpha (new to ff10)
-            return "CX"
-        # CT 12.01         0.878               sp3 aliphatic C
-        return "CT"
+    if (five_member)
+    {
+        if (count_element_in_array(atom.bonded_to_elements,"N") < 2)
+        {
+            // if there are fewer than two nitrogens bonded to this carbon, return CC
+            return "CC";
+        }
+        
+        // else if there are two or more nitrogens bonded to this carbon, return CQ
+        return "CQ";
+    }
+    if (six_member)
+    {
+        return "CA";
+    }
+    // Now we're out of ring structures entirely and should be purely sp2 carbons.
+    if (count_element_in_array(atom.bonded_to_elements,"O") == 0)
+    {
+        return "CD"; // atom in the middle of C=CD-CD=C (conjugated double-bonds)
+    }
+    if (count_element_in_array(atom.bonded_to_elements,"O") > 0)
+    {
+        return "C "; // carbonyl group
+    }
     
-    #### SP CARBONS
-    if n_bonds == 2:
-        bond_atoms = get_bonded_elements(atom)
-        # CY 12.01         0.360               nitrile C (Howard et al.JCC,16,243,1995)
-        if "N" in bond_atoms:
-            return "CY"
-        # CZ 12.01         0.360               sp C (Howard et al.JCC,16,243,1995)
-        else:
-            return "CZ"
-
-    #### RING CARBONS
-    ring_sizes=[]
-    for group in ring_groups:
-        if atom.idx in group:
-            ring_sizes.append(len(group))
-            
-    ## Bridging carbons
-    if len(ring_sizes) > 1:
-        # CB 12.01         0.360               sp2 aromatic C, 5&6 membered ring junction
-        return "CB"
-    ## All Other Rings
-    elif len(ring_sizes) == 1:
-        ## 5-member rings
-        if ring_sizes[0] == 5:
-            bond_atoms = get_bonded_elements(atom)
-            n_nitrogens = sum([bool(x == "N" for x in bond_atoms)])
-            if n_nitrogens < 2:
-                # CC 12.01         0.360               sp2 aromatic C, 5 memb. ring HIS
-                return "CC"
-            else:    
-                # CQ 12.01         0.360               sp2 C in 5 mem.ring of purines between 2 N
-                return "CQ"
-
-        ## 6-membered rings
-        elif ring_sizes[0] == 6:
-            # CA 12.01         0.360               sp2 C pure aromatic (benzene)
-            return "CA"
-    #### SP2 CARBONS
-    elif len(ring_sizes) == 0:
-        bond_atoms = get_bonded_elements(atom)
-        if "O" not in bond_atoms:
-            # CD 12.01         0.360               sp2 C atom in the middle of: C=CD-CD=C
-            return "CD"
-        else:
-            # C  12.01         0.616  !            sp2 C carbonyl group
-            return "C "
-    # If all else fails, return generic SP3 carbon...
-    return "CT"
-
-*/
+    return "CT"; // in failure, return an sp3 carbon...
 }
 
-/*
-def process_H(atom,ring_groups,bridging_atoms):
-    bond_atoms = get_bonded_elements(atom)
-    if bond_atoms[0] == "N":
-        # H  1.008         0.161               H bonded to nitrogen atoms
-        return "H "
-    if bond_atoms[0] == "O":
-        # HO 1.008         0.135               hydroxyl group
-        return "HO"
-    if bond_atoms[0] == "S":
-        # HS 1.008         0.135               hydrogen bonded to sulphur (pol?)
-        return "HO"
-    if bond_atoms[0] == "C":
-        if atom.bonds[0].atom1.element == "C":
-            carb_at_type = process_C(atom.bonds[0].atom1,ring_groups,bridging_atoms)
-        else:
-            carb_at_type = process_C(atom.bonds[0].atom2,ring_groups,bridging_atoms)
-        if carb_at_type in ["CY","CZ"]:
-            # HZ 1.008         0.161               H bond sp C (Howard et al.JCC,16,243,1995)
-            return "HZ"
-        elif carb_at_type == "CQ":
-            # H4 1.008         0.167               H arom. bond. to C with 1 electrwd. group
-            return "H4"
-        elif carb_at_type == "CA":
-            # HA 1.008         0.167               H arom. bond. to C without elctrwd. groups    
-            return "HA"
-        elif carb_at_type == "CC":
-            # H5 1.008         0.167               H arom.at C with 2 elctrwd. gr,+HCOO group
-            return "H5"
-            
-        elif carb_at_type == "CD":
-            # HC 1.008         0.135               H aliph. bond. to C without electrwd.group
-            return "HC"
-        return "HC"
-    return "HC"
+std::string process_H(Atom atom, Molecule mol)
+{
+    if (count_element_in_array(atom.bonded_to_elements,"N") == 1)
+        return "H ";
+    if (count_element_in_array(atom.bonded_to_elements,"O") == 1)
+        return "HO";
+    if (count_element_in_array(atom.bonded_to_elements,"S") == 1)
+        return "HS";
+    if (count_element_in_array(atom.bonded_to_elements,"C") == 1)
+    {
+        // identify carbon type.
+        int bonded_atom = atom.bonded_to_indexes[0];
+        std::string bonded_atom_type = process_C(mol.atoms[bonded_atom],mol);
+        std::map <std::string,std::string> hydrogen_map = {{"CY","HZ"},{"CZ","HZ"},{"CQ","H4"},{"CA","HA"},{"CC","H5"},{"CD","HC"}};
+        if (hydrogen_map.count(bonded_atom_type))
+        {
+            return hydrogen_map[bonded_atom_type];
+        }
+        return "HC";
+    }
 
-def process_N(atom,ring_groups,bridging_atoms):
-    bond_atoms = get_bonded_elements(atom)
-    n_bonds = len(bond_atoms)
-    if n_bonds == 1:
-        # NY 14.01         0.530               nitrile N (Howard et al.JCC,16,243,1995)
-        return "NY"
-    elif n_bonds == 3:
-        # NT 14.01         0.530               sp3 N for amino groups amino groups
-        return "N "
-    elif n_bonds == 4:
-        # N3 14.01         0.530               sp3 N for charged amino groups (Lys, etc)
-        return "N3"
-    else:
-        ring_sizes=[]
-        for group in ring_groups:
-            if atom.idx in group:
-                ring_sizes.append(len(group))
-        if len(ring_sizes) == 1:
-            if ring_sizes[0] == 5:
-                if "H" in bond_atoms:
-                    # NA 14.01         0.530               sp2 N in 5 memb.ring w/H atom (HIS)
-                    return "NA"
-                # NB 14.01         0.530               sp2 N in 5 memb.ring w/LP (HIS,ADE,GUA)
-                return "NB"
-            elif ring_sizes[0] == 6:
-                # NC 14.01         0.530               sp2 N in 6 memb.ring w/LP (ADE,GUA)
-                return "NC"
-        elif len(ring_sizes) == 0:
-            if "C" in bond_atoms:
-                for bond in atom.bonds:
-                    if bond.atom1.element_name == "C":
-                        c_bonded = get_bonded_elements(bond.atom1)
-                        if "O" in c_bonded:
-                            # N  14.01         0.530               sp2 nitrogen in amide groups
-                            return "N "
-        # N* 14.01         0.530               sp2 N
-        return "N*"
-            
-def process_O(atom):
-    n_bonds = len(atom.bonds)
-    bond_atoms = get_bonded_elements(atom)
-    if "P" in bond_atoms:
-        if n_bonds == 1:
-            # OP 16.00         0.465               2- phosphate oxygen
-            return "OP"
-        # O2 16.00         0.434               carboxyl and phosphate group oxygen
-        return "O2"
-    if "H" in bond_atoms:
-        # OH 16.00         0.465               oxygen in hydroxyl group
-        return "OH"
-    if "C" in bond_atoms:
-        if n_bonds == 1:
-            # O  16.00         0.434               carbonyl group oxygen
-            return "O "
-        # OS 16.00         0.465               ether and ester oxygen
-        return "OS"
-*/
+    return "HC";    
+}
+
+std::string process_N(Atom atom, Molecule mol)
+{
+    int n_bonds = atom.bonded_to_indexes.size();
+    if (n_bonds == 1)
+    {
+        return "NY";
+    }
+    if (n_bonds == 3)
+    {
+        return "N ";
+    }
+    if (n_bonds == 4)
+    {
+        return "N3";
+    }
+
+    // Identify ring structures
+    int n_rings = 0;
+    bool five_member = false;
+    bool six_member = false;
+
+    for (std::vector<int> ring : mol.five_rings)
+    {
+        if (std::find(ring.begin(), ring.end(), atom.atom_number-1) != ring.end())
+        {
+            n_rings++;
+            five_member = true;
+        }
+    }
+    for (std::vector<int> ring : mol.six_rings)
+    {
+        if (std::find(ring.begin(), ring.end(), atom.atom_number-1) != ring.end())
+        {
+            n_rings++;
+            six_member = true;
+        }
+    }
+    if (n_rings > 1)
+    {
+        return "N*";
+    }
+    if (n_rings == 1)
+    {
+        if (five_member)
+        {
+            if (count_element_in_array(atom.bonded_to_elements,"H") > 0)
+            {
+                return "NA";
+            }
+            return "NB";
+        }
+        if (six_member)
+        {
+            return "NC";
+        }
+    }
+    if (count_element_in_array(atom.bonded_to_elements,"C") > 0)
+    {
+        for (int idx : atom.bonded_to_indexes)
+        {
+            if (mol.atoms[idx].element == "C")
+            {
+                if (count_element_in_array(mol.atoms[idx].bonded_to_elements,"O") > 0)
+                {
+                    return "N ";
+                }
+            }
+        }
+    }
+    return "N*";
+}
+
+std::string process_O(Atom atom, Molecule mol)
+{
+    int n_bonds = atom.bonded_to_elements.size();
+    if (count_element_in_array(atom.bonded_to_elements,"P") > 0)
+    {
+        if (n_bonds == 1)
+        {
+            return "OP";
+        }
+        return "O2";
+    }
+    if (count_element_in_array(atom.bonded_to_elements,"H") > 0)
+    {
+        return "OH";
+    }
+    if (count_element_in_array(atom.bonded_to_elements,"C") > 0)
+    {
+        if (n_bonds == 1)
+        {
+            return "O ";
+        }
+        return "OS";
+    }
+    return "OH";
+}
+
+
+void AtomTyping(Molecule &mol)
+{
+    for (Atom atom : mol.atoms)
+    {
+        if (atom.element == "S")
+        {
+            atom.atom_type = process_S(atom,mol);
+            continue;
+        }
+        if (atom.element == "C")
+        {
+            atom.atom_type = process_C(atom,mol);
+            continue;
+        }
+        if (atom.element == "H")
+        {
+            atom.atom_type = process_H(atom,mol);
+            continue;
+        }
+        if (atom.element == "N")
+        {
+            atom.atom_type = process_N(atom,mol);
+            continue;
+        }
+        if (atom.element == "H")
+        {
+            atom.atom_type = process_H(atom,mol);
+            continue;
+        }
+        std::stringstream buf;
+        buf.str("");
+        buf << atom.element;
+        if (atom.element.size() < 2)
+            buf << " ";
+        atom.atom_type = buf.str();
+    }
+}

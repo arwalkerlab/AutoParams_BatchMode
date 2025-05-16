@@ -35,4 +35,5 @@ std::vector <std::string> string_split(std::string source, char delimiter);
 std::string substring_replace(std::string original, std::string target, std::string replacement);
 void DeleteIfEmpty(std::string);
 std::string FormattedTimeStamp();
+int count_element_in_array(std::vector<std::string> array,std::string element);
 #endif

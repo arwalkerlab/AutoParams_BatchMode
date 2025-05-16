@@ -128,13 +128,13 @@ bool Molecule::SpinChargeValidate()
 void Molecule::FindBonds()
 {
     //bonds (vector of vector of ints)
-    for (int i = 0; i < atoms.size()-1; i++)
+    for (unsigned int i = 0; i < atoms.size()-1; i++)
     {
         double x1 = atoms[i].xx;
         double y1 = atoms[i].yy;
         double z1 = atoms[i].zz;
         double vdw_1 = atoms[i].vdw_radius;
-        for (int j = i+1; j < atoms.size(); j++)
+        for (unsigned int j = i+1; j < atoms.size(); j++)
         {
             double x2 = atoms[j].xx;
             double y2 = atoms[j].yy;
@@ -145,22 +145,30 @@ void Molecule::FindBonds()
             if (dist < vdw_dist)
             {
                 // based on VDW radii distances, 
-                // std::cout << "Bond: " << atoms[i].atom_name << "--" << atoms[j].atom_name << " : " << dist << std::endl;
-                bonds.push_back({i,j});
+                bonds.push_back({(int)i,(int)j});
             }
         }
+    }
+    for (std::vector<int> bond : bonds)
+    {
+        int a = bond[0];
+        int b = bond[1];
+        atoms[a].bonded_to_indexes.push_back(b);
+        atoms[a].bonded_to_elements.push_back(atoms[b].element);
+        atoms[b].bonded_to_indexes.push_back(a);
+        atoms[b].bonded_to_elements.push_back(atoms[a].element);
     }
 }
 
 void Molecule::FindAngles()
 {
     std::vector<int> angle_tmp;
-    for (int i = 0; i < bonds.size()-1; i++)
+    for (unsigned int i = 0; i < bonds.size()-1; i++)
     {
         int a1 = bonds[i][0];
         int a2 = bonds[i][1];
         
-        for (int j = i+1; j < bonds.size(); j++)
+        for (unsigned int j = i+1; j < bonds.size(); j++)
         {
             int a3 = bonds[j][0];
             int a4 = bonds[j][1];
@@ -194,12 +202,12 @@ void Molecule::FindTorsions()
     //torsions (vector of vector of ints)
 
     //iterate through angles, match ends to bonds with non-middle atom names.
-    for (int a=0; a < angles.size(); a++)
+    for (unsigned int a=0; a < angles.size(); a++)
     {   
         int a1 = angles[a][0];
         int a2 = angles[a][1];
         int a3 = angles[a][2];
-        for (int b=0;b<bonds.size(); b++)
+        for (unsigned int b=0;b<bonds.size(); b++)
         {
             int b1 = bonds[b][0];
             int b2 = bonds[b][1];
@@ -234,12 +242,12 @@ void Molecule::FindDihedrals()
     std::vector <int> dihedral_tmp;
     //dihedrals (vector of vector of ints)
        //iterate through angles, match ends to bonds with non-middle atom names.
-    for (int a=0; a < angles.size(); a++)
+    for (unsigned int a=0; a < angles.size(); a++)
     {   
         int a1 = angles[a][0];
         int a2 = angles[a][1];
         int a3 = angles[a][2];
-        for (int b=0;b<bonds.size(); b++)
+        for (unsigned int b=0;b<bonds.size(); b++)
         {
             int b1 = bonds[b][0];
             int b2 = bonds[b][1];
@@ -268,11 +276,10 @@ void Molecule::FindDihedrals()
     }
 }
 
-
 void Molecule::FindRings()
 {
     //iterate through all torsions (A-B-C-D) in the molecule
-    for (int i=0; i < torsions.size(); i++)
+    for (unsigned int i=0; i < torsions.size(); i++)
     {   
         //assign atom numbers in torsion
         int at_A = torsions[i][0];
@@ -306,7 +313,7 @@ void Molecule::FindRings()
             }
         }
 
-        for (int j=i+1; j < torsions.size(); j++) // iterate through torsions to identify all 6-member rings.
+        for (unsigned int j=i+1; j < torsions.size(); j++) // iterate through torsions to identify all 6-member rings.
         {
             /*
                B--C

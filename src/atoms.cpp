@@ -92,6 +92,8 @@ Atom::Atom(std::string line)
     mass = AtomicMasses[element];
     electron_counter = AtomicNumbers[element];
     vdw_radius = vdWRadii[element]/100.0;
+    bonded_to_elements = {};
+    bonded_to_indexes = {};
 }
 
 Atom::~Atom()
@@ -151,6 +153,6 @@ std::string Atom::print_PDB_line()
 
 std::string Atom::print_mol2_line()
 {
-    
+    return "mol2 line\n";
 }
 

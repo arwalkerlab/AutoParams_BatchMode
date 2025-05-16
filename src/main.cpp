@@ -4,6 +4,7 @@
 #include "settings.h"
 #include "parameters.h"
 #include "optimize.h"
+#include "mol2.h"
 
 int main(int argc, char **argv)
 {
@@ -118,6 +119,9 @@ int main(int argc, char **argv)
     // parse RESP charges
     parse_TC_resp_output(mol, settings);
 
+    // ************************* Here's where I can put in my molecule atom-typer code...
+    AtomTyping(mol);
+    
     // Generate mol2 file
     Generate_Mol2_File(settings);
     Add_Charges_To_Mol2(settings, mol);

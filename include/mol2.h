@@ -4,14 +4,11 @@
 #include "utilities.h"
 #include "classes.h"
 
-class Mol2File
-{
-    private:
-        std::vector <Atom> atoms;
-    public:
-        void WriteMol2();
-        Mol2File(Molecule mol);
-        ~Mol2File();
-};
+std::string process_C(Atom atom, Molecule mol);
+std::string process_N(Atom atom, Molecule mol);
+std::string process_S(Atom atom, Molecule mol);
+std::string process_O(Atom atom, Molecule mol);
+std::string process_H(Atom atom, Molecule mol);
+void AtomTyping(Molecule &mol);
 
 #endif

@@ -139,3 +139,16 @@ std::string FormattedTimeStamp()
     oss << std::put_time(&tm, "\t(%Y/%m/%d %H:%M:%S)\n");
     return oss.str();
 }
+
+int count_element_in_array(std::vector<std::string> array, std::string element)
+{
+    int count=0;
+    for (std::string s : array)
+    {
+        if (s == element)
+        {
+            count++;
+        }
+    }
+    return count;
+}
