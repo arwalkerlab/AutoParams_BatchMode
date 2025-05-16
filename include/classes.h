@@ -28,6 +28,7 @@ class Atom
         void set_atomname(std::string atomname);
         void set_resp_charge(double respcharge);
         std::string print_PDB_line();
+        std::string print_mol2_line();
 };
 
 

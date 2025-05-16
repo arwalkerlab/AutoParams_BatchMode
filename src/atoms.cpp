@@ -149,3 +149,8 @@ std::string Atom::print_PDB_line()
     return line.str();
 }
 
+std::string Atom::print_mol2_line()
+{
+    
+}
+
